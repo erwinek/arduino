@@ -6,7 +6,8 @@ const int lcd_mosi = 9;
 const int lcd_cs = 13;
 const int lcd_reset = 11;
 
-U8GLIB_ST7920_128X64_1X u8g(lcd_cs );
+//hardware SPI
+U8GLIB_ST7920_128X64_1X u8g( lcd_cs );
 
 void setup() {  
   u8g.setFont(u8g_font_unifont);
@@ -27,7 +28,7 @@ void loop() {
 }
   
 void draw(){
-  u8g.drawStr( 0, 20, "Hello World");
+  u8g.drawStr( 10, 10, "Hello World");
     
 }
 
