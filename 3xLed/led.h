@@ -1,0 +1,11 @@
+#define CMD_CLEAR         1
+#define CMD_THREE_COLOURS 2
+#define CMD_RUN_RGB       3
+#define CMD_SWAP_RED      4
+#define CMD_SWAP_GREEN    5
+#define CMD_SWAP_BLUE     6
+#define CMD_PERCENT       7
+#define CMD_RAINBOW       8
+#define CMD_CHOINKA       9
+#define CMD_PULSE_COLOUR  10
+#define CMD_LAST          11
