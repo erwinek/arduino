@@ -5,6 +5,7 @@
 
 // Load Wi-Fi library
 #include <ESP8266WiFi.h>
+#include <ArduinoOTA.h>
 
 // Replace with your network credentials
 const char* ssid     = "ASUS";
@@ -54,10 +55,13 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   server.begin();
+  ArduinoOTA.begin();
 }
 int cnt = 0;
 void loop(){
   WiFiClient client = server.available();   // Listen for incoming clients
+
+  ArduinoOTA.handle();
 
   if (output5State=="on") {
     cnt++;
