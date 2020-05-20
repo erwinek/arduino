@@ -1,10 +1,5 @@
-/*********
-  Rui Santos
-  Complete project details at https://randomnerdtutorials.com  
-*********/
-
-// Load Wi-Fi library
 #include <ESP8266WiFi.h>
+#include <ArduinoOTA.h>
 
 // Replace with your network credentials
 const char* ssid     = "ASUS";
@@ -18,11 +13,9 @@ String header;
 
 // Auxiliar variables to store the current output state
 String output5State = "off";
-String output4State = "off";
 
 // Assign output variables to GPIO pins
 const int output5 = 0;
-const int output4 = 2;
 
 // Current time
 unsigned long currentTime = millis();
@@ -39,6 +32,7 @@ void setup() {
   // Set outputs to LOW
   digitalWrite(output5, HIGH);
   
+  //ArduinoOTA.begin();
 
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
@@ -58,7 +52,8 @@ void setup() {
 int cnt = 0;
 void loop(){
   WiFiClient client = server.available();   // Listen for incoming clients
-
+  //ArduinoOTA.handle();
+  
   if (output5State=="on") {
     cnt++;
     delay(1);
@@ -127,14 +122,7 @@ void loop(){
               client.println("<p><a href=\"/5/off\"><button class=\"button button2\">OFF</button></a></p>");
             } 
                
-            // Display current state, and ON/OFF buttons for GPIO 4  
-            client.println("<p>GPIO 4 - State " + output4State + "</p>");
-            // If the output4State is off, it displays the ON button       
-            if (output4State=="off") {
-              client.println("<p><a href=\"/4/on\"><button class=\"button\">ON</button></a></p>");
-            } else {
-              client.println("<p><a href=\"/4/off\"><button class=\"button button2\">OFF</button></a></p>");
-            }
+            
             client.println("</body></html>");
             
             // The HTTP response ends with another blank line
