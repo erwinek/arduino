@@ -1,3 +1,4 @@
+// Load Wi-Fi library
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 
@@ -20,7 +21,7 @@ const int output5 = 0;
 // Current time
 unsigned long currentTime = millis();
 // Previous time
-unsigned long previousTime = 0; 
+unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
 
@@ -28,11 +29,11 @@ void setup() {
   Serial.begin(115200);
   // Initialize the output variables as outputs
   pinMode(output5, OUTPUT);
-  
+
   // Set outputs to LOW
   digitalWrite(output5, HIGH);
-  
   //ArduinoOTA.begin();
+
 
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
@@ -48,19 +49,22 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   server.begin();
+  ArduinoOTA.begin();
 }
 int cnt = 0;
-void loop(){
+void loop() {
   WiFiClient client = server.available();   // Listen for incoming clients
   //ArduinoOTA.handle();
   
-  if (output5State=="on") {
+  ArduinoOTA.handle();
+
+  if (output5State == "on") {
     cnt++;
     delay(1);
     if (cnt > 50)
     {
-      output5State=="off";
-      cnt=0;      
+      output5State == "off";
+      cnt = 0;
       digitalWrite(output5, HIGH);
     }
   }
@@ -71,7 +75,7 @@ void loop(){
     currentTime = millis();
     previousTime = currentTime;
     while (client.connected() && currentTime - previousTime <= timeoutTime) { // loop while the client's connected
-      currentTime = millis();         
+      currentTime = millis();
       if (client.available()) {             // if there's bytes to read from the client,
         char c = client.read();             // read a byte, then
         Serial.write(c);                    // print it out the serial monitor
@@ -86,45 +90,45 @@ void loop(){
             client.println("Content-type:text/html");
             client.println("Connection: close");
             client.println();
-            
+
             // turns the GPIOs on and off
             if (header.indexOf("GET /5/on") >= 0) {
               Serial.println("GPIO 5 on");
               output5State = "on";
               digitalWrite(output5, LOW);
-  
+
             } else if (header.indexOf("GET /5/off") >= 0) {
               Serial.println("GPIO 5 off");
               output5State = "off";
               digitalWrite(output5, HIGH);
-            } 
-            
+            }
+
             // Display the HTML web page
             client.println("<!DOCTYPE html><html>");
             client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
             client.println("<link rel=\"icon\" href=\"data:,\">");
-            // CSS to style the on/off buttons 
+            // CSS to style the on/off buttons
             // Feel free to change the background-color and font-size attributes to fit your preferences
             client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
             client.println(".button { background-color: #195B6A; border: none; color: white; padding: 16px 40px;");
             client.println("text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}");
             client.println(".button2 {background-color: #77878A;}</style></head>");
-            
+
             // Web Page Heading
-            client.println("<body><h1>Gate Keeper</h1>");
-            
-            // Display current state, and ON/OFF buttons for GPIO 5  
+            client.println("<body><h1>Gate Keeper2</h1>");
+
+            // Display current state, and ON/OFF buttons for GPIO 5
             client.println("<p>Brama " + output5State + "</p>");
-            // If the output5State is off, it displays the ON button       
-            if (output5State=="off") {
+            // If the output5State is off, it displays the ON button
+            if (output5State == "off") {
               client.println("<p><a href=\"/5/on\"><button class=\"button\">ON</button></a></p>");
             } else {
               client.println("<p><a href=\"/5/off\"><button class=\"button button2\">OFF</button></a></p>");
-            } 
-               
+            }
+
             
             client.println("</body></html>");
-            
+
             // The HTTP response ends with another blank line
             client.println();
             // Break out of the while loop
