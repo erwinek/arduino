@@ -31,9 +31,14 @@ float TempNaDachu;
 void setup(void)
 {
   Serial.begin(9600);
+
+
+  
   sensors.begin();                           //rozpocznij odczyt z czujnika
   pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
   pinMode(SOLAR_PUMP_PIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
+
+
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, pass);
@@ -41,7 +46,7 @@ void setup(void)
     delay(500);
     Serial.print(".");
   }
-
+findDevices(ONE_WIRE_BUS);
     ArduinoOTA.onStart([]() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
@@ -115,16 +120,47 @@ void loop(void)
 
   if(sensor_timer>100) {
     sensor_timer=0;
-    TempKolektora = sensors.getTempCByIndex(1);
-    TempZbiornika = sensors.getTempCByIndex(0);
+    TempKolektora = sensors.getTempCByIndex(0);
+    TempZbiornika = sensors.getTempCByIndex(1);
     TempNaDachu = sensors.getTempCByIndex(2);
-  
+    /*
+     uint8_t pin14[][8] = {
+12:04:53.598 ->   {
+12:04:53.598 -> 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A  },
+12:04:53.667 ->   {
+12:04:53.667 -> 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29  },
+12:04:53.735 ->   {
+12:04:53.735 -> 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D  },
+12:04:53.804 -> };
+ 
+     
+     */
+    uint8_t address0[8] = { 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A };
+    uint8_t address1[8] = { 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29 };
+    uint8_t address2[8] = { 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D };
+
+    uint64_t *pAddr0 = (uint64_t*)&address0[0];
+    uint64_t *pAddr1 = (uint64_t*)&address1[0];
+    uint64_t *pAddr2 = (uint64_t*)&address2[0];
+    
+    //sensors.getAddress(address0, 0);
+    //sensors.getAddress(address1, 1);
+    //sensors.getAddress(address2, 2);
+    
     sensors.requestTemperatures();            //zazadaj odczyt temperatury z czujnika
-  
-    Serial.print("TempKolektora=");
+
+    Serial.printf("%08x", *pAddr0);
+    Serial.print(sensors.getTempC(address0));
+    Serial.print(" TempKolektora=");
     Serial.println(TempKolektora);
+
+    Serial.printf("%08x", *pAddr1);
+    Serial.print(sensors.getTempC(address1));
     Serial.print("TempZbiornika=");
     Serial.println(TempZbiornika);
+
+    Serial.printf("%08x", *pAddr2);
+    Serial.print(sensors.getTempC(address2));
     Serial.print("TempNaDachu=");
     Serial.println(TempNaDachu);
   
@@ -190,4 +226,35 @@ void handleNotFound() {
   }
   server.send(404, "text/plain", message);
   
+}
+
+uint8_t findDevices(int pin)
+{
+  OneWire ow(pin);
+
+  uint8_t address[8];
+  uint8_t count = 0;
+
+  if (ow.search(address))
+  {
+    Serial.print("\nuint8_t pin");
+    Serial.print(pin, DEC);
+    Serial.println("[][8] = {");
+    do {
+      count++;
+      Serial.println("  {");
+      for (uint8_t i = 0; i < 8; i++)
+      {
+        Serial.print("0x");
+        if (address[i] < 0x10) Serial.print("0");
+        Serial.print(address[i], HEX);
+        if (i < 7) Serial.print(", ");
+      }
+      Serial.println("  },");
+    } while (ow.search(address));
+
+    Serial.println("};");
+    Serial.print("// nr devices found: ");
+    Serial.println(count);
+  }
 }
