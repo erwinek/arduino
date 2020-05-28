@@ -23,9 +23,11 @@ OneWire oneWire(one_wire);                   //wywołujemy transmisję 1-Wire na
 DallasTemperature sensors(&oneWire);         //informujemy Arduino, ze przy pomocy 1-Wire
 ESP8266WebServer server(80);
 
+char LogArray[1000] = "";
+
 float TempKolektora;
 float TempZbiornika;
-float TempNaDachu;
+float TempKolektora2;
   
                                              
 void setup(void)
@@ -120,49 +122,30 @@ void loop(void)
 
   if(sensor_timer>100) {
     sensor_timer=0;
-    TempKolektora = sensors.getTempCByIndex(0);
-    TempZbiornika = sensors.getTempCByIndex(1);
-    TempNaDachu = sensors.getTempCByIndex(2);
-    /*
-     uint8_t pin14[][8] = {
-12:04:53.598 ->   {
-12:04:53.598 -> 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A  },
-12:04:53.667 ->   {
-12:04:53.667 -> 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29  },
-12:04:53.735 ->   {
-12:04:53.735 -> 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D  },
-12:04:53.804 -> };
- 
-     
-     */
+
     uint8_t address0[8] = { 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A };
     uint8_t address1[8] = { 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29 };
     uint8_t address2[8] = { 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D };
 
-    uint64_t *pAddr0 = (uint64_t*)&address0[0];
-    uint64_t *pAddr1 = (uint64_t*)&address1[0];
-    uint64_t *pAddr2 = (uint64_t*)&address2[0];
-    
-    //sensors.getAddress(address0, 0);
-    //sensors.getAddress(address1, 1);
-    //sensors.getAddress(address2, 2);
+    float temp = sensors.getTempC(address0);
+    if(temp > -100) TempKolektora = temp; 
+
+    temp = sensors.getTempC(address1);
+    if(temp > -100) TempZbiornika = temp; 
+
+    temp = sensors.getTempC(address2);
+    if(temp > -100) TempKolektora2 = temp; 
     
     sensors.requestTemperatures();            //zazadaj odczyt temperatury z czujnika
 
-    Serial.printf("%08x", *pAddr0);
-    Serial.print(sensors.getTempC(address0));
     Serial.print(" TempKolektora=");
     Serial.println(TempKolektora);
 
-    Serial.printf("%08x", *pAddr1);
-    Serial.print(sensors.getTempC(address1));
     Serial.print("TempZbiornika=");
     Serial.println(TempZbiornika);
 
-    Serial.printf("%08x", *pAddr2);
-    Serial.print(sensors.getTempC(address2));
-    Serial.print("TempNaDachu=");
-    Serial.println(TempNaDachu);
+    Serial.print("TempKolektora2=");
+    Serial.println(TempKolektora2);
   
   if ( TempKolektora > (TempZbiornika + HISTEREZA))
   {
@@ -171,7 +154,7 @@ void loop(void)
     SolarPumpOn = true;
   }
 
-  if (( TempKolektora > TEMP_MAX ) || (TempNaDachu > TEMP_MAX))
+  if (( TempKolektora > TEMP_MAX ) || (TempKolektora2 > TEMP_MAX))
   {
     //wlacz pompe jesli temp max
     digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on (Note that LOW is the voltage level
@@ -194,6 +177,7 @@ void loop(void)
     Serial.println("PUMP OFF");
   }
   }
+
   delay(1);                                //odczekaj 500ms
   //ArduinoOTA.handle();
   server.handleClient();
@@ -203,12 +187,9 @@ void loop(void)
 void handleRoot() {
   String out = "\n TempKolektora=" + String(TempKolektora) + "\n";
   out += "\n TempZbiornika=" + String(TempZbiornika);
-  out += "\n TempNaDachu=" + String(TempNaDachu);
-  server.send(200, "text/plain", "hello from esp8266!" + out);
+  out += "\n TempKolektora2=" + String(TempKolektora2);
+  server.send(200, "text/plain", "System Solarny" + out);
   
-//float TempKolektora;
-//float TempZbiornika;
-//float TempNaDachu;
 }
 
 void handleNotFound() {
