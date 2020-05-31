@@ -7,6 +7,8 @@
 #define TEMP_MAX 60
 #define ONE_WIRE_BUS D13 
 #define SOLAR_PUMP_PIN D15 
+#define PUMP_ON_TIME 100
+#define TEMP_MIN_PUMP 45
 
 #ifndef STASSID
 #define STASSID "ASUS"
@@ -16,14 +18,13 @@
 const char * ssid = STASSID; // your network SSID (name)
 const char * pass = STAPSK;  // your network password
 
+int pump_timer = 0;
 int sensor_timer = 0;
 int one_wire = ONE_WIRE_BUS;                           //Transmisja 1-Wire na pinie 10
 bool SolarPumpOn = false;
 OneWire oneWire(one_wire);                   //wywołujemy transmisję 1-Wire na pinie 10
 DallasTemperature sensors(&oneWire);         //informujemy Arduino, ze przy pomocy 1-Wire
 ESP8266WebServer server(80);
-
-char LogArray[1000] = "";
 
 float TempKolektora;
 float TempZbiornika;
@@ -34,8 +35,6 @@ void setup(void)
 {
   Serial.begin(9600);
 
-
-  
   sensors.begin();                           //rozpocznij odczyt z czujnika
   pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
   pinMode(SOLAR_PUMP_PIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
@@ -123,6 +122,8 @@ void loop(void)
   if(sensor_timer>100) {
     sensor_timer=0;
 
+    if(pump_timer) pump_timer--;
+
     uint8_t address0[8] = { 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A };
     uint8_t address1[8] = { 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29 };
     uint8_t address2[8] = { 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D };
@@ -168,18 +169,26 @@ void loop(void)
 
   if(SolarPumpOn==true)
   {
-    digitalWrite(SOLAR_PUMP_PIN, HIGH);
-    Serial.println("PUMP ON");
+    if(!pump_timer) {
+      if((TempKolektora > TEMP_MIN_PUMP) | (TempKolektora2 > TEMP_MIN_PUMP) ) {
+        pump_timer = PUMP_ON_TIME;
+        digitalWrite(SOLAR_PUMP_PIN, HIGH);
+        Serial.println("PUMP ON");
+      }
+    }    
+    else Serial.printf("\n pumpt_timer=%d", pump_timer);
   }
   else
   {
-    digitalWrite(SOLAR_PUMP_PIN, LOW);
-    Serial.println("PUMP OFF");
+    if(!pump_timer) {
+      digitalWrite(SOLAR_PUMP_PIN, LOW);
+      Serial.println("PUMP OFF");
+    }
   }
   }
 
   delay(1);                                //odczekaj 500ms
-  //ArduinoOTA.handle();
+  ArduinoOTA.handle();
   server.handleClient();
  
 }
