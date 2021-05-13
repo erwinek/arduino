@@ -1,30 +1,36 @@
-#include <DallasTemperature.h>               //dodaj biblitekę LiquidCrystal.h
+#include <DallasTemperature.h>
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <ESP8266WebServer.h>
+#include "ThingSpeak.h"
 
-#define HISTEREZA 10
-#define TEMP_MAX 60
+#define HISTEREZA 6
+#define TEMP_MAX 45
 #define ONE_WIRE_BUS D13 
 #define SOLAR_PUMP_PIN D15 
-#define PUMP_ON_TIME 100
-#define TEMP_MIN_PUMP 45
+#define PUMP_ON_TIME 50
+#define TEMP_MIN_PUMP 42
 
 #ifndef STASSID
 #define STASSID "ASUS"
-#define STAPSK  "HasloWifi123"
+#define STAPSK  "BezpieczneHasloWifi123"
 #endif
 
 const char * ssid = STASSID; // your network SSID (name)
 const char * pass = STAPSK;  // your network password
 
-int pump_timer = 0;
+unsigned long myChannelNumber = 61972;
+const char * myWriteAPIKey = "7MK6L089WHKG1FB1";
+
+int timer_thingspeak = 0;
+int pump_timer = 30;
 int sensor_timer = 0;
 int one_wire = ONE_WIRE_BUS;                           //Transmisja 1-Wire na pinie 10
 bool SolarPumpOn = false;
 OneWire oneWire(one_wire);                   //wywołujemy transmisję 1-Wire na pinie 10
 DallasTemperature sensors(&oneWire);         //informujemy Arduino, ze przy pomocy 1-Wire
 ESP8266WebServer server(80);
+WiFiClient  WifiClient;
 
 float TempKolektora;
 float TempZbiornika;
@@ -47,7 +53,11 @@ void setup(void)
     delay(500);
     Serial.print(".");
   }
-findDevices(ONE_WIRE_BUS);
+  
+  findDevices(ONE_WIRE_BUS);
+
+  ThingSpeak.begin(WifiClient);
+  
     ArduinoOTA.onStart([]() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
@@ -129,13 +139,13 @@ void loop(void)
     uint8_t address2[8] = { 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D };
 
     float temp = sensors.getTempC(address0);
-    if(temp > -100) TempKolektora = temp; 
+    if((temp > -100) &&(temp!=85)) TempKolektora = temp; 
 
     temp = sensors.getTempC(address1);
-    if(temp > -100) TempZbiornika = temp; 
+    if((temp > -100) &&(temp!=85)) TempZbiornika = temp; 
 
     temp = sensors.getTempC(address2);
-    if(temp > -100) TempKolektora2 = temp; 
+    if((temp > -100) &&(temp!=85)) TempKolektora2 = temp; 
     
     sensors.requestTemperatures();            //zazadaj odczyt temperatury z czujnika
 
@@ -147,14 +157,23 @@ void loop(void)
 
     Serial.print("TempKolektora2=");
     Serial.println(TempKolektora2);
-  
+
+
+  /*
   if ( TempKolektora > (TempZbiornika + HISTEREZA))
   {
     //wlacz pompke
     digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on (Note that LOW is the voltage level
     SolarPumpOn = true;
   }
-
+  if ( TempKolektora2 > (TempZbiornika + HISTEREZA))
+  {
+    //wlacz pompke
+    digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on (Note that LOW is the voltage level
+    SolarPumpOn = true;
+  }
+  */
+  
   if (( TempKolektora > TEMP_MAX ) || (TempKolektora2 > TEMP_MAX))
   {
     //wlacz pompe jesli temp max
@@ -185,6 +204,33 @@ void loop(void)
       Serial.println("PUMP OFF");
     }
   }
+  }
+
+  timer_thingspeak++;
+  if(timer_thingspeak>10000)
+  {
+    timer_thingspeak = 0;
+/*
+    // Write value to Field 1 of a ThingSpeak Channel
+    int httpCode = ThingSpeak.writeField(myChannelNumber, 7, TempZbiornika, myWriteAPIKey);
+
+    if (httpCode == 200) Serial.println("Channel write successful.");
+    else  Serial.println("Problem writing to channel. HTTP error code " + String(httpCode));
+    
+    httpCode = ThingSpeak.writeField(myChannelNumber, 6, TempKolektora2, myWriteAPIKey);
+    if (httpCode == 200) Serial.println("Channel write successful.");
+    else  Serial.println("Problem writing to channel. HTTP error code " + String(httpCode));
+    
+    httpCode = ThingSpeak.writeField(myChannelNumber, 6, TempKolektora, myWriteAPIKey);
+    if (httpCode == 200) Serial.println("Channel write successful.");
+    else  Serial.println("Problem writing to channel. HTTP error code " + String(httpCode));
+  */
+  ThingSpeak.setField(7, TempZbiornika);
+  ThingSpeak.setField(8, TempKolektora2);
+  ThingSpeak.setField(6, TempKolektora);
+  ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+  
   }
 
   delay(1);                                //odczekaj 500ms
