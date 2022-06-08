@@ -2,6 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <ESP8266WebServer.h>
+#include <ThingSpeak.h>
 
 #define HISTEREZA 10
 #define TEMP_MAX 60
@@ -10,11 +11,15 @@
 
 #ifndef STASSID
 #define STASSID "ASUS"
-#define STAPSK  "HasloWifi123"
+#define STAPSK  "BezpieczneHasloWifi123"
 #endif
 
 const char * ssid = STASSID; // your network SSID (name)
 const char * pass = STAPSK;  // your network password
+
+unsigned long myChannelNumber = 61972;
+const char * myWriteAPIKey = "7MK6L089WHKG1FB1";
+WiFiClient  client;
 
 int sensor_timer = 0;
 int one_wire = ONE_WIRE_BUS;                           //Transmisja 1-Wire na pinie 10
@@ -29,6 +34,14 @@ float TempKolektora;
 float TempZbiornika;
 float TempKolektora2;
   
+float temp1 = 0;
+float temp2 = 0;
+float temp3 = 0;
+float temp4 = 0;
+DeviceAddress tempDeviceAddress1;
+DeviceAddress tempDeviceAddress2;
+DeviceAddress tempDeviceAddress3;
+DeviceAddress tempDeviceAddress4;
                                              
 void setup(void)
 {
@@ -113,9 +126,18 @@ findDevices(ONE_WIRE_BUS);
 
   server.begin();
   Serial.println("HTTP server started");
+
+  ThingSpeak.begin(client);  // Initialize ThingSpeak
 }
 
- 
+
+void printAddress(DeviceAddress deviceAddress) {
+  for (uint8_t i = 0; i < 8; i++) {
+    if (deviceAddress[i] < 16) Serial.print("0");
+      Serial.print(deviceAddress[i], HEX);
+  }
+}
+ int cnt=0;
 void loop(void)
 { 
   sensor_timer++;
@@ -123,7 +145,7 @@ void loop(void)
   if(sensor_timer>100) {
     sensor_timer=0;
 
-    uint8_t address0[8] = { 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A };
+    uint8_t address0[8] = { 0x28, 0x37, 0xF2, 0x0F, 0x00, 0x00, 0x00, 0xC9 };
     uint8_t address1[8] = { 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29 };
     uint8_t address2[8] = { 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D };
 
@@ -140,13 +162,37 @@ void loop(void)
 
     Serial.print(" TempKolektora=");
     Serial.println(TempKolektora);
+    //ThingSpeak.setField (6, TempKolektora);
 
     Serial.print("TempZbiornika=");
     Serial.println(TempZbiornika);
+    ThingSpeak.setField (7, TempZbiornika);
 
     Serial.print("TempKolektora2=");
     Serial.println(TempKolektora2);
-  
+    ThingSpeak.setField (8, TempKolektora2);
+
+
+    
+    temp1 = sensors.getTempCByIndex(0);
+    temp2 = sensors.getTempCByIndex(1);
+    temp3 = sensors.getTempCByIndex(2);
+    temp4 = sensors.getTempCByIndex(3);
+
+    sensors.getAddress(tempDeviceAddress1, 0);
+    sensors.getAddress(tempDeviceAddress2, 1);
+    sensors.getAddress(tempDeviceAddress3, 2);
+    sensors.getAddress(tempDeviceAddress4, 3);
+
+    Serial.print("id1=");
+    printAddress(tempDeviceAddress1);
+    Serial.print("id2=");
+    printAddress(tempDeviceAddress2);
+    Serial.print("id3=");
+    printAddress(tempDeviceAddress3);
+    Serial.print("id4=");
+    printAddress(tempDeviceAddress4);
+ 
   if ( TempKolektora > (TempZbiornika + HISTEREZA))
   {
     //wlacz pompke
@@ -177,6 +223,17 @@ void loop(void)
     Serial.println("PUMP OFF");
   }
   }
+  if(cnt<1000) cnt++;
+  else {
+    cnt = 0;
+    int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+    if(x == 200){
+      Serial.println("Channel update successful.");
+    }
+    else{
+      Serial.println("Problem updating channel. HTTP error code " + String(x));
+    }
+  }
 
   delay(1);                                //odczekaj 500ms
   //ArduinoOTA.handle();
@@ -185,9 +242,10 @@ void loop(void)
 }
 //--------End Loop----------------------------------------------------------------------
 void handleRoot() {
-  String out = "\n TempKolektora=" + String(TempKolektora) + "\n";
-  out += "\n TempZbiornika=" + String(TempZbiornika);
-  out += "\n TempKolektora2=" + String(TempKolektora2);
+  String out = "\n temp1=" + String(temp1) + "\n";
+  out += "\n temp2=" + String(temp2);
+  out += "\n temp3=" + String(temp3);
+  out += "\n temp4=" + String(temp4);
   server.send(200, "text/plain", "System Solarny" + out);
   
 }
@@ -238,4 +296,5 @@ uint8_t findDevices(int pin)
     Serial.print("// nr devices found: ");
     Serial.println(count);
   }
+  return count;
 }
