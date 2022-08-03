@@ -1,13 +1,19 @@
-#include <DallasTemperature.h>               //dodaj biblitekę LiquidCrystal.h
+#include <DallasTemperature.h>
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <ESP8266WebServer.h>
+<<<<<<< HEAD
 #include <ThingSpeak.h>
+=======
+#include "ThingSpeak.h"
+>>>>>>> 2ca3cf8cc3605a0f3c9259e27b2eebc0451b76ad
 
-#define HISTEREZA 10
-#define TEMP_MAX 60
+#define HISTEREZA 6
+#define TEMP_MAX 45
 #define ONE_WIRE_BUS D13 
 #define SOLAR_PUMP_PIN D15 
+#define PUMP_ON_TIME 50
+#define TEMP_MIN_PUMP 42
 
 #ifndef STASSID
 #define STASSID "ASUS"
@@ -19,16 +25,21 @@ const char * pass = STAPSK;  // your network password
 
 unsigned long myChannelNumber = 61972;
 const char * myWriteAPIKey = "7MK6L089WHKG1FB1";
+<<<<<<< HEAD
 WiFiClient  client;
 
+=======
+
+int timer_thingspeak = 0;
+int pump_timer = 30;
+>>>>>>> 2ca3cf8cc3605a0f3c9259e27b2eebc0451b76ad
 int sensor_timer = 0;
 int one_wire = ONE_WIRE_BUS;                           //Transmisja 1-Wire na pinie 10
 bool SolarPumpOn = false;
 OneWire oneWire(one_wire);                   //wywołujemy transmisję 1-Wire na pinie 10
 DallasTemperature sensors(&oneWire);         //informujemy Arduino, ze przy pomocy 1-Wire
 ESP8266WebServer server(80);
-
-char LogArray[1000] = "";
+WiFiClient  WifiClient;
 
 float TempKolektora;
 float TempZbiornika;
@@ -47,8 +58,6 @@ void setup(void)
 {
   Serial.begin(9600);
 
-
-  
   sensors.begin();                           //rozpocznij odczyt z czujnika
   pinMode(LED_BUILTIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
   pinMode(SOLAR_PUMP_PIN, OUTPUT);     // Initialize the LED_BUILTIN pin as an output
@@ -61,7 +70,11 @@ void setup(void)
     delay(500);
     Serial.print(".");
   }
-findDevices(ONE_WIRE_BUS);
+  
+  findDevices(ONE_WIRE_BUS);
+
+  ThingSpeak.begin(WifiClient);
+  
     ArduinoOTA.onStart([]() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
@@ -145,18 +158,24 @@ void loop(void)
   if(sensor_timer>100) {
     sensor_timer=0;
 
+<<<<<<< HEAD
     uint8_t address0[8] = { 0x28, 0x37, 0xF2, 0x0F, 0x00, 0x00, 0x00, 0xC9 };
+=======
+    if(pump_timer) pump_timer--;
+
+    uint8_t address0[8] = { 0x28, 0xB5, 0x83, 0x77, 0x91, 0x10, 0x02, 0x8A };
+>>>>>>> 2ca3cf8cc3605a0f3c9259e27b2eebc0451b76ad
     uint8_t address1[8] = { 0x28, 0x83, 0x80, 0x77, 0x91, 0x19, 0x02, 0x29 };
     uint8_t address2[8] = { 0x28, 0xFF, 0x90, 0x70, 0x86, 0x16, 0x05, 0x9D };
 
     float temp = sensors.getTempC(address0);
-    if(temp > -100) TempKolektora = temp; 
+    if((temp > -100) &&(temp!=85)) TempKolektora = temp; 
 
     temp = sensors.getTempC(address1);
-    if(temp > -100) TempZbiornika = temp; 
+    if((temp > -100) &&(temp!=85)) TempZbiornika = temp; 
 
     temp = sensors.getTempC(address2);
-    if(temp > -100) TempKolektora2 = temp; 
+    if((temp > -100) &&(temp!=85)) TempKolektora2 = temp; 
     
     sensors.requestTemperatures();            //zazadaj odczyt temperatury z czujnika
 
@@ -170,6 +189,7 @@ void loop(void)
 
     Serial.print("TempKolektora2=");
     Serial.println(TempKolektora2);
+<<<<<<< HEAD
     ThingSpeak.setField (8, TempKolektora2);
 
 
@@ -193,13 +213,25 @@ void loop(void)
     Serial.print("id4=");
     printAddress(tempDeviceAddress4);
  
+=======
+
+
+  /*
+>>>>>>> 2ca3cf8cc3605a0f3c9259e27b2eebc0451b76ad
   if ( TempKolektora > (TempZbiornika + HISTEREZA))
   {
     //wlacz pompke
     digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on (Note that LOW is the voltage level
     SolarPumpOn = true;
   }
-
+  if ( TempKolektora2 > (TempZbiornika + HISTEREZA))
+  {
+    //wlacz pompke
+    digitalWrite(LED_BUILTIN, LOW);   // Turn the LED on (Note that LOW is the voltage level
+    SolarPumpOn = true;
+  }
+  */
+  
   if (( TempKolektora > TEMP_MAX ) || (TempKolektora2 > TEMP_MAX))
   {
     //wlacz pompe jesli temp max
@@ -214,14 +246,49 @@ void loop(void)
 
   if(SolarPumpOn==true)
   {
-    digitalWrite(SOLAR_PUMP_PIN, HIGH);
-    Serial.println("PUMP ON");
+    if(!pump_timer) {
+      if((TempKolektora > TEMP_MIN_PUMP) | (TempKolektora2 > TEMP_MIN_PUMP) ) {
+        pump_timer = PUMP_ON_TIME;
+        digitalWrite(SOLAR_PUMP_PIN, HIGH);
+        Serial.println("PUMP ON");
+      }
+    }    
+    else Serial.printf("\n pumpt_timer=%d", pump_timer);
   }
   else
   {
-    digitalWrite(SOLAR_PUMP_PIN, LOW);
-    Serial.println("PUMP OFF");
+    if(!pump_timer) {
+      digitalWrite(SOLAR_PUMP_PIN, LOW);
+      Serial.println("PUMP OFF");
+    }
   }
+  }
+
+  timer_thingspeak++;
+  if(timer_thingspeak>10000)
+  {
+    timer_thingspeak = 0;
+/*
+    // Write value to Field 1 of a ThingSpeak Channel
+    int httpCode = ThingSpeak.writeField(myChannelNumber, 7, TempZbiornika, myWriteAPIKey);
+
+    if (httpCode == 200) Serial.println("Channel write successful.");
+    else  Serial.println("Problem writing to channel. HTTP error code " + String(httpCode));
+    
+    httpCode = ThingSpeak.writeField(myChannelNumber, 6, TempKolektora2, myWriteAPIKey);
+    if (httpCode == 200) Serial.println("Channel write successful.");
+    else  Serial.println("Problem writing to channel. HTTP error code " + String(httpCode));
+    
+    httpCode = ThingSpeak.writeField(myChannelNumber, 6, TempKolektora, myWriteAPIKey);
+    if (httpCode == 200) Serial.println("Channel write successful.");
+    else  Serial.println("Problem writing to channel. HTTP error code " + String(httpCode));
+  */
+  ThingSpeak.setField(7, TempZbiornika);
+  ThingSpeak.setField(8, TempKolektora2);
+  ThingSpeak.setField(6, TempKolektora);
+  ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+
+  
   }
   if(cnt<1000) cnt++;
   else {
@@ -236,7 +303,7 @@ void loop(void)
   }
 
   delay(1);                                //odczekaj 500ms
-  //ArduinoOTA.handle();
+  ArduinoOTA.handle();
   server.handleClient();
  
 }
